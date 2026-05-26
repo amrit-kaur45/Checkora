@@ -1670,15 +1670,32 @@
             }
 
             async function resumeGame() {
-                if (!paused) return;
-                const d = await post('/api/pause/', { pause: false });
-                paused = d.paused;
-                whiteTime = d.white_time;
-                blackTime = d.black_time;
-                updatePauseUI();
-                renderClocks();
-                startTimer();
-                queueAIMoveIfNeeded();
+                try {
+                    const d = await post('/api/pause/', { pause: false });
+
+                    paused = false;
+
+                    if (d.white_time !== undefined) {
+                        whiteTime = d.white_time;
+                    }
+
+                    if (d.black_time !== undefined) {
+                        blackTime = d.black_time;
+                    }
+
+                    updatePauseUI();
+                    renderClocks();
+
+                    clearInterval(timerInterval);
+                    startTimer();
+
+                    boardEl.classList.remove('paused');
+
+                    queueAIMoveIfNeeded();
+
+                } catch (e) {
+                    console.error("Resume failed", e);
+                }
             }
 
             /* ==========================================================
@@ -2234,11 +2251,7 @@
             }
 
             if (resignBtn) resignBtn.onclick = () => {
-                if (!gameOver && !paused) {
-                    const confirmDifficultyContainer = document.getElementById('confirmDifficultyContainer');
-                    const confirmTimerContainer = document.getElementById('confirmTimerContainer');
-                    if (confirmDifficultyContainer) confirmDifficultyContainer.style.display = 'none';
-                    if (confirmTimerContainer) confirmTimerContainer.style.display = 'none';
+                if (!gameOver) {
                     showConfirm("Resign?", "Are you sure you want to resign?", async () => {
                         try {
                             const result = await post('/api/resign/', {});
