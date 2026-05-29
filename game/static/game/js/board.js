@@ -24,6 +24,7 @@
             let hints = [];
              let lastMove = null;
              let premoveQueue = [];
+             let lastPremoveQueueStr = '';
              let highlightedSquare = null;
 
             let dragging = false;
@@ -347,13 +348,44 @@
                     if (piece) {
                         virtualBoard[pm.to.r][pm.to.c] = piece;
                         virtualBoard[pm.from.r][pm.from.c] = null;
+
+                        // Virtual castling handling
+                        if (piece.toLowerCase() === 'k' && Math.abs(pm.to.c - pm.from.c) === 2) {
+                            const isKingside = pm.to.c > pm.from.c;
+                            const rookColFrom = isKingside ? 7 : 0;
+                            const rookColTo = isKingside ? 5 : 3;
+                            const rook = virtualBoard[pm.from.r][rookColFrom];
+                            if (rook && rook.toLowerCase() === 'r') {
+                                virtualBoard[pm.from.r][rookColTo] = rook;
+                                virtualBoard[pm.from.r][rookColFrom] = null;
+                            }
+                        }
+
+                        // Virtual en passant handling
+                        if (piece.toLowerCase() === 'p' && pm.from.c !== pm.to.c && !virtualBoard[pm.to.r][pm.to.c]) {
+                            virtualBoard[pm.from.r][pm.to.c] = null;
+                        }
+
+                        // Virtual pawn promotion (default to Queen for path selection)
+                        if (piece.toLowerCase() === 'p' && (pm.to.r === 0 || pm.to.r === 7)) {
+                            const promotedPiece = piece === 'P' ? 'Q' : 'q';
+                            virtualBoard[pm.to.r][pm.to.c] = promotedPiece;
+                        }
                     }
                 }
                 return virtualBoard;
             }
 
-            function drawPremoveArrows() {
+            function drawPremoveArrows(force = false) {
                 let overlay = document.getElementById('premove-svg-overlay');
+                const currentStr = JSON.stringify(premoveQueue);
+
+                // Short-circuit to avoid DOM churn if the queue contents are unchanged
+                if (!force && overlay && currentStr === lastPremoveQueueStr) {
+                    return;
+                }
+                lastPremoveQueueStr = currentStr;
+
                 if (overlay) {
                     overlay.remove();
                 }
@@ -386,7 +418,7 @@
                     return;
                 }
 
-                premoveQueue.forEach(pm => {
+                premoveQueue.forEach((pm, idx) => {
                     const fromSq = sq(pm.from.r, pm.from.c);
                     const toSq = sq(pm.to.r, pm.to.c);
                     if (!fromSq || !toSq) return;
@@ -409,6 +441,35 @@
                     line.setAttribute('opacity', '0.75');
                     line.setAttribute('marker-end', 'url(#premove-arrowhead)');
                     overlay.appendChild(line);
+
+                    // Midpoint step indicator badge for chained and overlapping pre-moves
+                    const midX = (x1 + x2) / 2;
+                    const midY = (y1 + y2) / 2;
+
+                    const badgeG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', midX);
+                    circle.setAttribute('cy', midY);
+                    circle.setAttribute('r', '8');
+                    circle.setAttribute('fill', '#16162a');
+                    circle.setAttribute('stroke', '#3b82f6');
+                    circle.setAttribute('stroke-width', '1.5');
+
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', midX);
+                    text.setAttribute('y', midY);
+                    text.setAttribute('fill', '#ffffff');
+                    text.setAttribute('font-size', '9px');
+                    text.setAttribute('font-weight', 'bold');
+                    text.setAttribute('font-family', 'sans-serif');
+                    text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('dominant-baseline', 'central');
+                    text.textContent = idx + 1;
+
+                    badgeG.appendChild(circle);
+                    badgeG.appendChild(text);
+                    overlay.appendChild(badgeG);
                 });
 
                 boardEl.appendChild(overlay);
@@ -3603,9 +3664,13 @@ if (leaveConfirmNo) leaveConfirmNo.addEventListener('click', () => {
                 await resumeGame();
             });
 
+            let resizeTimeout;
             window.addEventListener('resize', () => {
                 if (premoveQueue.length > 0) {
-                    drawPremoveArrows();
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        drawPremoveArrows(true);
+                    }, 100);
                 }
             });
 
