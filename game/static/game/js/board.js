@@ -3546,7 +3546,11 @@
                     newAIBtn.click();
                 } else if (key === 'h') {
                     e.preventDefault();
-                    window.location.href = '/';
+                    if (shouldConfirmLeave()) {
+                        leaveConfirmOverlay.style.display = 'flex';
+                    } else {
+                        window.location.href = '/';
+                    }
 
                 } else if (key === 'escape') {
                     e.preventDefault();
@@ -3604,10 +3608,11 @@
 const leaveConfirmOverlay = document.getElementById('leaveConfirmOverlay');
 const leaveConfirmYes = document.getElementById('leaveConfirmYes');
 const leaveConfirmNo = document.getElementById('leaveConfirmNo');
+const shouldConfirmLeave = () => !gameOver && !welcomeOverlay.classList.contains('active');
 
 document.querySelectorAll('a[href="/"]').forEach(link => {
     link.addEventListener('click', (e) => {
-        if (!gameOver && !welcomeOverlay.classList.contains('active')) {
+        if (shouldConfirmLeave()) {
             e.preventDefault();
             leaveConfirmOverlay.style.display = 'flex';
         }
