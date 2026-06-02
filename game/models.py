@@ -47,9 +47,15 @@ class PuzzleStats(models.Model):
         on_delete=models.CASCADE
     )
 
-    puzzles_solved = models.PositiveIntegerField(default=0)
+    puzzles_solved = models.PositiveIntegerField(
+        default=0,
+        db_index=True,
+    )
     current_streak = models.PositiveIntegerField(default=0)
-    best_streak = models.PositiveIntegerField(default=0)
+    best_streak = models.PositiveIntegerField(
+        default=0,
+        db_index=True
+    )
     daily_completions = models.PositiveIntegerField(default=0)
     
     def __str__(self):
