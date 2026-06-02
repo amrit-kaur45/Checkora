@@ -40,3 +40,18 @@ class GameResult(models.Model):
 
     def __str__(self):
         return f"{self.mode} | {self.winner} | {self.end_reason}"
+
+class PuzzleStats(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE
+    )
+
+    puzzles_solved = models.PositiveIntegerField(default=0)
+    current_streak = models.PositiveIntegerField(default=0)
+    best_streak = models.PositiveIntegerField(default=0)
+    daily_completions = models.PositiveIntegerField(default=0)
+    
+    def __str__(self):
+        return f"{self.user.username} Puzzle Stats"
+    
