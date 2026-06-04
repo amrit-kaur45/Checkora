@@ -22,7 +22,7 @@ FIXES_RE = re.compile(r"(?i)fixes\s+#(\d+)")
 RELATED_RE = re.compile(r"(?i)related issue[^\n]*#(\d+)")
 
 
-def github_get(url: str, token: str) -> dict:
+def github_get(url: str, token: str):
     request = urllib.request.Request(
         url,
         headers={
@@ -32,8 +32,24 @@ def github_get(url: str, token: str) -> dict:
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
-    with urllib.request.urlopen(request, timeout=30) as response:
+    # GitHub REST only; URLs are built from repo metadata, not user input.
+    with urllib.request.urlopen(request, timeout=30) as response:  # nosec B310
         return json.load(response)
+
+
+def is_infra_only_pr(owner: str, repo: str, pr_number: int, token: str) -> bool:
+    """Allow workflow-only PRs (e.g. PR Guardian itself) without a linked issue."""
+    files = github_get(
+        f"https://api.github.com/repos/{owner}/{repo}/pulls/{pr_number}/files?per_page=100",
+        token,
+    )
+    if not isinstance(files, list) or not files:
+        return False
+    for entry in files:
+        name = entry.get("filename", "")
+        if not (name.startswith(".github/") or name == "vercel.json"):
+            return False
+    return True
 
 
 def parse_issue_numbers(body: str, title: str = "") -> list[int]:
@@ -73,6 +89,9 @@ def evaluate_pr(
 
     if has_maintainer_bypass(owner, repo, author, token):
         return True, "maintainer_bypass"
+
+    if is_infra_only_pr(owner, repo, pr_number, token):
+        return True, "infra_only"
 
     issue_numbers = parse_issue_numbers(body, title)
     if not issue_numbers:
