@@ -93,6 +93,9 @@ def evaluate_pr(
     if is_infra_only_pr(owner, repo, pr_number, token):
         return True, "infra_only"
 
+    if re.search(r"#\s*\(\s*issue\s+number\s*\)", body, re.IGNORECASE):
+        return False, "template_not_filled"
+
     issue_numbers = parse_issue_numbers(body, title)
     if not issue_numbers:
         return False, "no_issue_linked"

@@ -49,8 +49,11 @@ jobs:
       reason: ${{ steps.check.outputs.reason }}
 
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout PR Guardian script from base branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          sparse-checkout: .github/scripts
 
       - name: 🛡️ Check PR author is assigned to linked issue(s)
         id: check
